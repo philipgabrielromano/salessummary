@@ -68,6 +68,7 @@ class GraphClient:
 
         # Use $search for subject (KQL syntax) — this is the most reliable
         # approach for Graph API. $search requires ConsistencyLevel: eventual.
+        # NOTE: $orderby cannot be combined with $search, so we sort in Python.
         search_query = f'"subject:{subject_filter}"'
 
         url = (
@@ -75,7 +76,6 @@ class GraphClient:
             f"?$search={search_query}"
             f"&$top=10"
             f"&$select=id,subject,receivedDateTime,from,hasAttachments"
-            f"&$orderby=receivedDateTime desc"
         )
 
         headers = {
@@ -101,7 +101,8 @@ class GraphClient:
             logger.warning("No Power BI report email found matching the filter.")
             return None
 
-        # Already sorted by receivedDateTime desc, take the first
+        # Sort by receivedDateTime descending (can't use $orderby with $search)
+        messages.sort(key=lambda m: m.get("receivedDateTime", ""), reverse=True)
         msg = messages[0]
         logger.info(
             f"Found email: '{msg['subject']}' "
