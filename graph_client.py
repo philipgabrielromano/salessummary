@@ -113,45 +113,91 @@ class GraphClient:
     def download_pdf_attachment(self, message_id: str) -> Path | None:
         """
         Download the first PDF attachment from a message.
-        Returns the path to the downloaded temp file, or None.
+        Handles both inline (#microsoft.graph.fileAttachment) and
+        large attachments. Returns the path to a temp file, or None.
         """
         user = self.config.mailbox_user
+
+        # Fetch all attachments (no contentType filter — not always reliable)
         url = (
             f"{GRAPH_BASE_URL}/users/{user}/messages/{message_id}/attachments"
-            f"?$filter=contentType eq 'application/pdf'"
         )
 
-        logger.info("Fetching PDF attachment...")
+        logger.info("Fetching attachments...")
         response = requests.get(url, headers=self._headers, timeout=60)
         response.raise_for_status()
 
-        attachments = response.json().get("value", [])
-        if not attachments:
-            # Fallback: get all attachments and look for PDF by name
-            url_all = (
-                f"{GRAPH_BASE_URL}/users/{user}/messages/{message_id}/attachments"
-            )
-            response = requests.get(url_all, headers=self._headers, timeout=60)
-            response.raise_for_status()
-            attachments = [
-                a for a in response.json().get("value", [])
-                if a.get("name", "").lower().endswith(".pdf")
-            ]
+        all_attachments = response.json().get("value", [])
+        logger.info(f"Found {len(all_attachments)} attachment(s)")
 
-        if not attachments:
+        # Log details for debugging
+        for att in all_attachments:
+            logger.info(
+                f"  - name='{att.get('name')}' "
+                f"type={att.get('@odata.type')} "
+                f"contentType={att.get('contentType')} "
+                f"size={att.get('size', 'N/A')}"
+            )
+
+        # Find PDF attachment by name or contentType
+        pdf_attachment = None
+        for att in all_attachments:
+            name = (att.get("name") or "").lower()
+            content_type = (att.get("contentType") or "").lower()
+            if name.endswith(".pdf") or "pdf" in content_type:
+                pdf_attachment = att
+                break
+
+        if not pdf_attachment:
             logger.warning("No PDF attachment found in the email.")
             return None
 
-        attachment = attachments[0]
-        file_name = attachment.get("name", "report.pdf")
-        content_bytes = base64.b64decode(attachment["contentBytes"])
+        att_name = pdf_attachment.get("name", "report.pdf")
+        att_type = pdf_attachment.get("@odata.type", "")
+        att_id = pdf_attachment.get("id", "")
+
+        # Ensure filename has .pdf extension
+        if not att_name.lower().endswith(".pdf"):
+            att_name += ".pdf"
+
+        logger.info(f"Selected attachment: '{att_name}' (type: {att_type})")
+
+        # Handle file attachment with contentBytes present
+        if pdf_attachment.get("contentBytes"):
+            content_bytes = base64.b64decode(pdf_attachment["contentBytes"])
+        else:
+            # contentBytes may be missing for large attachments.
+            # Fetch the raw content using $value endpoint.
+            logger.info("No contentBytes — fetching raw content via $value endpoint...")
+            value_url = (
+                f"{GRAPH_BASE_URL}/users/{user}/messages/{message_id}"
+                f"/attachments/{att_id}/$value"
+            )
+            value_response = requests.get(
+                value_url, headers=self._headers, timeout=120
+            )
+            value_response.raise_for_status()
+            content_bytes = value_response.content
 
         # Save to temp file
         temp_dir = Path(tempfile.mkdtemp())
-        pdf_path = temp_dir / file_name
+        pdf_path = temp_dir / att_name
         pdf_path.write_bytes(content_bytes)
 
-        logger.info(f"Downloaded PDF: {file_name} ({len(content_bytes):,} bytes)")
+        # Verify it looks like a PDF
+        with open(pdf_path, "rb") as f:
+            header = f.read(5)
+        if header != b"%PDF-":
+            logger.error(
+                f"Downloaded file does not appear to be a valid PDF. "
+                f"Header bytes: {header!r}"
+            )
+            logger.error(
+                f"First 200 chars: {content_bytes[:200]!r}"
+            )
+            return None
+
+        logger.info(f"Downloaded PDF: {att_name} ({len(content_bytes):,} bytes) ✅")
         return pdf_path
 
     def send_html_email(
