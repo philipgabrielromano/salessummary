@@ -12,7 +12,7 @@ services:
   - type: cron
     name: power-bi-summarizer
     runtime: python
-    schedule: "30 13 * * 1-5"  # 8:30 AM EST (13:30 UTC), Mon-Fri
+    schedule: "00 13 * * 1-5"  # 8:30 AM EST (13:30 UTC), Mon-Fri
     buildCommand: pip install -r requirements.txt
     startCommand: python main.py
     envVars:
