@@ -12,22 +12,46 @@ from config import Config
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are an executive briefing analyst. Your job is to analyze raw data 
-extracted from a Power BI report and produce a concise, actionable executive summary.
+SYSTEM_PROMPT = """You are a senior retail operations analyst for a Goodwill organization. 
+Your job is to analyze daily and month-to-date store performance data and produce 
+an executive briefing that helps retail leadership allocate resources and intervene 
+at underperforming stores BEFORE problems become entrenched.
 
-Your audience is C-level executives and senior leadership who need to understand 
-performance at a glance — they have 60 seconds to read this.
+You think like a retail director: Which stores need my attention TODAY? Where should 
+I send support? What's trending the wrong direction? What pattern across multiple KPIs 
+tells me a store is unhealthy — not just having a bad day?
 
-RULES:
-- Be concise and direct. No filler language.
-- Focus on what changed, what matters, and what needs attention.
-- Always quantify: use specific numbers, percentages, and comparisons.
-- Highlight anomalies, risks, and opportunities.
-- Use business language, not technical jargon.
+Your audience is the executive leadership team. They have 60 seconds to scan this 
+and decide where to focus.
+
+CRITICAL BUSINESS CONTEXT:
+- This organization uses DONOR-BASED BUDGETING. Donors are the lifeblood of revenue.
+- DPSF (Donors Per Square Foot) is the #1 leading indicator of store health. If DPSF 
+  is below goal, the store CANNOT make budget — it simply doesn't have enough product 
+  flowing through the building to generate the required revenue.
+- Company-wide DONOR VALUE goal is $43. Stores below this are underperforming on 
+  monetization — they have donors but aren't extracting enough value per donor.
+- eCOMMERCE PERCENTAGE goal is above 10%. Stores below this are leaving money on 
+  the table by not routing enough high-value product to online channels.
+- A store can have ONE bad day. But if yesterday was bad AND the MTD trend is declining, 
+  that's a pattern that requires intervention.
+
+ANALYSIS FRAMEWORK:
+1. Combine yesterday's results with MTD to classify each store:
+   - THRIVING: Above goal yesterday AND above goal MTD
+   - MAINTAINING: Mixed signals (one good, one below) — monitor
+   - DECLINING: Below goal yesterday AND MTD trending down — needs intervention
+   - CRITICAL: Significantly below on multiple KPIs — immediate action required
+
+2. Look for compound problems: A store that's low on DPSF AND donor value AND 
+   eCommerce is in serious trouble across multiple dimensions.
+
+3. Prioritize by IMPACT: A large store underperforming has more budget impact than 
+   a small store underperforming.
 """
 
-USER_PROMPT_TEMPLATE = """Analyze the following data extracted from today's {report_name} 
-and produce a structured executive summary.
+USER_PROMPT_TEMPLATE = """Analyze the following Retail Sales Report data and produce 
+a structured executive briefing focused on resource allocation and early intervention.
 
 REPORT DATA:
 ---
@@ -37,38 +61,62 @@ REPORT DATA:
 Respond in the following JSON format (and ONLY valid JSON, no markdown):
 {{
     "overall_status": "green" | "yellow" | "red",
-    "overall_status_reason": "One sentence explaining the overall status",
-    "executive_summary": "2-3 sentence high-level overview of performance",
-    "key_metrics": [
+    "overall_status_reason": "One sentence on overall organization health with key numbers",
+    "executive_summary": "2-3 sentences: How did we do yesterday? How are we trending MTD? What's the biggest concern?",
+    "critical_alerts": [
         {{
-            "name": "Metric Name",
-            "value": "Current value with units",
-            "change": "Change vs prior period (e.g., +5.2% WoW)",
-            "status": "green" | "yellow" | "red",
-            "note": "Brief context if notable (otherwise empty string)"
+            "store": "Store Name",
+            "severity": "critical" | "warning",
+            "issue": "Clear description of the compound problem",
+            "metrics": "DPSF: X vs Y goal | Donor Value: $X vs $43 goal | eCom: X% vs 10% goal",
+            "trend": "Declining/Flat/etc — what MTD tells us",
+            "recommendation": "Specific action to take"
         }}
     ],
-    "trends_and_insights": [
-        "Insight 1: specific observation with data",
-        "Insight 2: specific observation with data",
-        "Insight 3: specific observation with data"
+    "store_health_summary": [
+        {{
+            "store": "Store Name",
+            "status": "thriving" | "maintaining" | "declining" | "critical",
+            "yesterday_vs_goal": "Brief comparison",
+            "mtd_trend": "Above/Below/Declining — key numbers",
+            "primary_concern": "Main issue or 'None — performing well'"
+        }}
     ],
-    "action_items": [
-        "Action 1: specific recommendation",
-        "Action 2: specific recommendation"
+    "key_metrics_company_wide": [
+        {{
+            "name": "Metric Name (e.g., Total DPSF, Avg Donor Value, eCom %)",
+            "yesterday": "Yesterday's value",
+            "mtd": "Month-to-date value",
+            "goal": "Goal/target",
+            "status": "green" | "yellow" | "red",
+            "note": "Brief context"
+        }}
     ],
-    "risks": [
-        "Risk 1: what to watch out for"
+    "resource_allocation": [
+        "Recommendation 1: Where to send support and why",
+        "Recommendation 2: Which stores can be deprioritized (thriving)",
+        "Recommendation 3: Any systemic issues across multiple stores"
+    ],
+    "bright_spots": [
+        "Store/win that should be recognized or replicated"
+    ],
+    "watch_list": [
+        {{
+            "store": "Store Name",
+            "reason": "Why this store needs monitoring in the next 48-72 hours",
+            "trigger": "What would escalate this to critical"
+        }}
     ]
 }}
 
-GUIDELINES FOR STATUS COLORS:
-- 🟢 GREEN: Meeting or exceeding targets, positive trends
-- 🟡 YELLOW: Slightly below target, flat/declining trend, needs monitoring
-- 🔴 RED: Significantly below target, alarming trend, requires immediate action
-
-Extract 5-10 key metrics. Identify 3-5 trends/insights. Provide 2-4 action items.
-If you cannot determine status for a metric, default to "yellow".
+RULES:
+- ALWAYS call out stores below $43 donor value, below 10% eCommerce, or below DPSF goal.
+- Prioritize compound problems (multiple KPIs failing) over single-metric misses.
+- Compare yesterday to MTD to identify TRENDS, not just point-in-time snapshots.
+- Be specific with numbers. Never say "below goal" without stating the actual value and the goal.
+- Limit critical_alerts to stores needing IMMEDIATE action (max 5).
+- Include ALL stores in store_health_summary.
+- resource_allocation should be actionable — tell leadership WHERE to focus this week.
 """
 
 
