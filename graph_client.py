@@ -57,37 +57,51 @@ class GraphClient:
     def find_latest_report_email(self) -> dict | None:
         """
         Search the mailbox for the most recent Power BI report email.
+        Uses a two-step approach:
+          1. Fetch recent emails filtered by subject (using $search)
+          2. Filter by sender in Python (Graph API doesn't support combining these)
         Returns the email message dict, or None if not found.
         """
         user = self.config.mailbox_user
         subject_filter = self.config.email_subject_filter
         sender_filter = self.config.email_sender_filter
 
-        # Build OData filter
-        filters = [f"contains(subject, '{subject_filter}')"]
-        if sender_filter:
-            filters.append(
-                f"from/emailAddress/address eq '{sender_filter}'"
-            )
-        filter_query = " and ".join(filters)
+        # Use $search for subject (KQL syntax) — this is the most reliable
+        # approach for Graph API. $search requires ConsistencyLevel: eventual.
+        search_query = f'"subject:{subject_filter}"'
 
         url = (
             f"{GRAPH_BASE_URL}/users/{user}/messages"
-            f"?$filter={filter_query}"
-            f"&$orderby=receivedDateTime desc"
-            f"&$top=1"
+            f"?$search={search_query}"
+            f"&$top=10"
             f"&$select=id,subject,receivedDateTime,from,hasAttachments"
+            f"&$orderby=receivedDateTime desc"
         )
 
-        logger.info(f"Searching for Power BI report email (filter: {subject_filter})...")
-        response = requests.get(url, headers=self._headers, timeout=30)
+        headers = {
+            **self._headers,
+            "ConsistencyLevel": "eventual",
+        }
+
+        logger.info(f"Searching for Power BI report email (subject: {subject_filter})...")
+        response = requests.get(url, headers=headers, timeout=30)
         response.raise_for_status()
 
         messages = response.json().get("value", [])
+
+        # Filter by sender in Python if configured
+        if sender_filter and messages:
+            sender_lower = sender_filter.lower()
+            messages = [
+                m for m in messages
+                if m.get("from", {}).get("emailAddress", {}).get("address", "").lower() == sender_lower
+            ]
+
         if not messages:
             logger.warning("No Power BI report email found matching the filter.")
             return None
 
+        # Already sorted by receivedDateTime desc, take the first
         msg = messages[0]
         logger.info(
             f"Found email: '{msg['subject']}' "
