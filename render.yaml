@@ -1,0 +1,44 @@
+# Render Blueprint — Power BI PDF Summarizer
+# Deploy as a cron job on Render's free tier
+#
+# Usage:
+#   1. Push this repo to GitHub
+#   2. Go to Render Dashboard → New → Blueprint
+#   3. Connect your GitHub repo
+#   4. Render will auto-detect this render.yaml
+#   5. Add your environment variables in the Render dashboard
+
+services:
+  - type: cron
+    name: power-bi-summarizer
+    runtime: python
+    schedule: "30 13 * * 1-5"  # 8:30 AM EST (13:30 UTC), Mon-Fri
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: AZURE_TENANT_ID
+        sync: false
+      - key: AZURE_CLIENT_ID
+        sync: false
+      - key: AZURE_CLIENT_SECRET
+        sync: false
+      - key: MAILBOX_USER
+        sync: false
+      - key: EMAIL_SUBJECT_FILTER
+        sync: false
+      - key: EMAIL_SENDER_FILTER
+        sync: false
+      - key: RECIPIENT_EMAILS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o
+      - key: COMPANY_NAME
+        sync: false
+      - key: REPORT_NAME
+        value: Daily Performance Report
+      - key: FULL_REPORT_URL
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO
