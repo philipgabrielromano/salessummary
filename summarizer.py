@@ -220,7 +220,7 @@ def generate_summary(report_content: str, config: Config) -> dict:
             {"role": "user", "content": user_prompt},
         ],
         temperature=0.3,  # Low temp for consistent, factual output
-        max_tokens=4000,
+        max_tokens=12000,
         response_format={"type": "json_object"},
     )
 
