@@ -142,9 +142,16 @@ Respond in the following JSON format (and ONLY valid JSON, no markdown):
         {{
             "store": "Store Name",
             "status": "thriving" | "maintaining" | "declining" | "critical",
-            "yesterday_vs_goal": "Budget %: X% | DPSF: X vs X goal | DV: $X",
-            "mtd_trend": "Budget %: X% | DPSF variance: X | DV: $X | eCom: X%",
-            "primary_concern": "Main issue or 'None — performing well'"
+            "budget_yesterday": "+5.2%" or "-14.1%",
+            "budget_mtd": "+4.2%" or "-15.9%",
+            "dpsf_actual": "4.39",
+            "dpsf_goal": "5.24",
+            "dpsf_ok": true if Donors per Square >= DPSF Goal else false,
+            "donor_value_mtd": "$45",
+            "dv_ok": true if Donor Value MTD >= 43 else false,
+            "ecom_pct": "10%",
+            "ecom_ok": true if eCom % >= 10 else false,
+            "primary_concern": "Main issue or empty string if performing well"
         }}
     ],
     "key_metrics_company_wide": [
@@ -156,11 +163,6 @@ Respond in the following JSON format (and ONLY valid JSON, no markdown):
             "status": "green" | "yellow" | "red",
             "note": "Brief context"
         }}
-    ],
-    "resource_allocation": [
-        "PRIORITY 1: Where to send support and why (biggest budget impact)",
-        "PRIORITY 2: Next most important intervention",
-        "DEPRIORITIZE: Which stores are thriving and need no attention"
     ],
     "bright_spots": [
         "Store/win that should be recognized or replicated"
@@ -183,8 +185,11 @@ RULES:
 - Be specific with numbers. Always state the actual value AND the goal/target.
 - Limit critical_alerts to stores needing IMMEDIATE action (max 5).
 - Include ALL active stores in store_health_summary (skip inactive/NaN stores).
-- resource_allocation should be actionable — tell leadership WHERE to focus this week.
-- For DPSF, always show: actual "Donors per Square" vs "DPSF Goal" (e.g., "3.79 vs 5.05 goal").
+- For store_health_summary: use the MTD "Donors per Square" as dpsf_actual, and "DPSF Goal" as dpsf_goal.
+  Set dpsf_ok=true only if actual >= goal. Set dv_ok=true only if Donor Value >= $43. Set ecom_ok=true only if eCom% >= 10.
+  For budget fields, include the % sign (e.g., "+4.2%" or "-15.9%").
+- For outlet stores that lack DPSF/donor columns, use "—" for dpsf_actual, dpsf_goal, donor_value_mtd and set their _ok fields to true.
+- For DPSF in critical_alerts, always show: actual "Donors per Square" vs "DPSF Goal" (e.g., "3.79 vs 5.05 goal").
 """
 
 
@@ -239,7 +244,6 @@ def generate_summary(report_content: str, config: Config) -> dict:
             "key_metrics_company_wide": [],
             "critical_alerts": [],
             "store_health_summary": [],
-            "resource_allocation": ["Review the full report manually"],
             "bright_spots": [],
             "watch_list": [],
         }
@@ -247,12 +251,12 @@ def generate_summary(report_content: str, config: Config) -> dict:
     # Validate expected keys exist
     expected_keys = [
         "overall_status", "executive_summary", "key_metrics_company_wide",
-        "critical_alerts", "store_health_summary", "resource_allocation",
+        "critical_alerts", "store_health_summary",
         "bright_spots", "watch_list",
     ]
     for key in expected_keys:
         if key not in summary:
-            summary[key] = [] if key != "overall_status" and key != "executive_summary" else ""
+            summary[key] = [] if key not in ("overall_status", "executive_summary", "overall_status_reason") else ""
 
     logger.info(
         f"Summary generated: {len(summary.get('store_health_summary', []))} stores, "
