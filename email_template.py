@@ -1,7 +1,7 @@
 """
 HTML email template for retail executive summary emails.
 Designed for Goodwill retail leadership — focused on store health,
-resource allocation, and early warning signals.
+early warning signals, and at-a-glance readability.
 Renders well in Outlook, Gmail, and mobile clients. All CSS is inline.
 """
 
@@ -15,10 +15,10 @@ STATUS_COLORS = {
 }
 
 HEALTH_STYLES = {
-    "thriving": {"bg": "#E8F5E9", "text": "#2E7D32", "dot": "🟢", "label": "Thriving"},
-    "maintaining": {"bg": "#E3F2FD", "text": "#1565C0", "dot": "🔵", "label": "Maintaining"},
-    "declining": {"bg": "#FFF8E1", "text": "#F57F17", "dot": "🟡", "label": "Declining"},
-    "critical": {"bg": "#FFEBEE", "text": "#C62828", "dot": "🔴", "label": "Critical"},
+    "thriving": {"bg": "#E8F5E9", "text": "#2E7D32", "dot": "🟢"},
+    "maintaining": {"bg": "#E3F2FD", "text": "#1565C0", "dot": "🔵"},
+    "declining": {"bg": "#FFF8E1", "text": "#F57F17", "dot": "🟡"},
+    "critical": {"bg": "#FFEBEE", "text": "#C62828", "dot": "🔴"},
 }
 
 
@@ -32,7 +32,6 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
     critical_alerts_html = _build_critical_alerts(summary.get("critical_alerts", []))
     store_health_html = _build_store_health_table(summary.get("store_health_summary", []))
     company_metrics_html = _build_company_metrics(summary.get("key_metrics_company_wide", []))
-    resource_html = _build_list_section(summary.get("resource_allocation", []))
     bright_spots_html = _build_list_section(summary.get("bright_spots", []))
     watch_list_html = _build_watch_list(summary.get("watch_list", []))
 
@@ -67,9 +66,9 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
     <tr>
         <td align="center">
 
-<table role="presentation" width="680" cellspacing="0" cellpadding="0" border="0"
+<table role="presentation" width="720" cellspacing="0" cellpadding="0" border="0"
        style="background-color:#FFFFFF;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);
-              max-width:680px;width:100%;">
+              max-width:720px;width:100%;">
 
     <!-- Header -->
     <tr>
@@ -134,22 +133,13 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
     <!-- Store Health Summary -->
     <tr>
         <td style="padding:0 24px 20px 24px;">
-            <h2 style="margin:0 0 12px 0;font-size:16px;color:#1565C0;font-weight:600;">
+            <h2 style="margin:0 0 4px 0;font-size:16px;color:#1565C0;font-weight:600;">
                 🏪 Store Health Overview
             </h2>
+            <p style="margin:0 0 12px 0;font-size:11px;color:#999;">
+                Sorted by status (critical first). Flags: ⬇ below goal &nbsp; ✓ at/above goal
+            </p>
             {store_health_html}
-        </td>
-    </tr>
-
-    <!-- Resource Allocation -->
-    <tr>
-        <td style="padding:0 24px 20px 24px;">
-            <h2 style="margin:0 0 12px 0;font-size:16px;color:#1565C0;font-weight:600;">
-                🎯 Resource Allocation Recommendations
-            </h2>
-            <ol style="margin:0;padding-left:20px;">
-                {resource_html}
-            </ol>
         </td>
     </tr>
 
@@ -250,8 +240,16 @@ def _build_critical_alerts(alerts: list[dict]) -> str:
     """
 
 
+def _format_kpi_cell(value: str, is_good: bool) -> str:
+    """Format a KPI cell with color and arrow indicator."""
+    if is_good:
+        return f'<span style="color:#2E7D32;font-weight:600;">✓ {value}</span>'
+    else:
+        return f'<span style="color:#C62828;font-weight:600;">⬇ {value}</span>'
+
+
 def _build_store_health_table(stores: list[dict]) -> str:
-    """Build the store health summary table."""
+    """Build a clean, scannable store health table with dedicated columns."""
     if not stores:
         return '<p style="font-size:14px;color:#666;">No store data available.</p>'
 
@@ -265,24 +263,95 @@ def _build_store_health_table(stores: list[dict]) -> str:
         style = HEALTH_STYLES.get(status, HEALTH_STYLES["maintaining"])
         bg = "#FFFFFF" if i % 2 == 0 else "#FAFAFA"
 
+        # Get individual KPI values
+        budget_yesterday = store.get("budget_yesterday", "—")
+        budget_mtd = store.get("budget_mtd", "—")
+        dpsf_actual = store.get("dpsf_actual", "—")
+        dpsf_goal = store.get("dpsf_goal", "—")
+        dpsf_ok = store.get("dpsf_ok", True)
+        donor_value = store.get("donor_value_mtd", "—")
+        dv_ok = store.get("dv_ok", True)
+        ecom = store.get("ecom_pct", "—")
+        ecom_ok = store.get("ecom_ok", True)
+        concern = store.get("primary_concern", "")
+
+        # Color the budget cells
+        def _budget_cell(val):
+            if val == "—":
+                return '<span style="color:#999;">—</span>'
+            # Try to detect negative
+            clean = str(val).replace("%", "").replace("+", "").strip()
+            try:
+                num = float(clean)
+                if num >= 0:
+                    return f'<span style="color:#2E7D32;font-weight:600;">{val}</span>'
+                else:
+                    return f'<span style="color:#C62828;font-weight:600;">{val}</span>'
+            except ValueError:
+                return val
+
+        # DPSF cell: show actual vs goal with color
+        if dpsf_actual != "—" and dpsf_goal != "—":
+            dpsf_display = f"{dpsf_actual}"
+            if dpsf_ok:
+                dpsf_html = f'<span style="color:#2E7D32;font-weight:600;">✓ {dpsf_display}</span>'
+            else:
+                dpsf_html = f'<span style="color:#C62828;font-weight:600;">⬇ {dpsf_display}</span>'
+            dpsf_html += f'<br><span style="font-size:10px;color:#999;">goal: {dpsf_goal}</span>'
+        else:
+            dpsf_html = '<span style="color:#999;">—</span>'
+
+        # Donor Value cell
+        if donor_value != "—":
+            if dv_ok:
+                dv_html = f'<span style="color:#2E7D32;font-weight:600;">✓ {donor_value}</span>'
+            else:
+                dv_html = f'<span style="color:#C62828;font-weight:600;">⬇ {donor_value}</span>'
+        else:
+            dv_html = '<span style="color:#999;">—</span>'
+
+        # eCom cell
+        if ecom != "—":
+            if ecom_ok:
+                ecom_html = f'<span style="color:#2E7D32;font-weight:600;">✓ {ecom}</span>'
+            else:
+                ecom_html = f'<span style="color:#C62828;font-weight:600;">⬇ {ecom}</span>'
+        else:
+            ecom_html = '<span style="color:#999;">—</span>'
+
+        # Status badge
+        badge_html = (
+            f'<span style="display:inline-block;padding:2px 8px;border-radius:10px;'
+            f'font-size:10px;font-weight:600;color:{style["text"]};'
+            f'background-color:{style["bg"]};">{style["dot"]}</span>'
+        )
+
         rows += f"""
         <tr style="background-color:{bg};">
-            <td style="padding:8px 10px;font-size:13px;color:#333;border-bottom:1px solid #EEE;
-                       white-space:nowrap;">
-                {style['dot']} <strong>{store.get('store', '')}</strong>
+            <td style="padding:7px 8px;font-size:12px;color:#333;border-bottom:1px solid #EEE;
+                       white-space:nowrap;vertical-align:top;">
+                <strong>{store.get('store', '')}</strong><br>
+                {badge_html}
             </td>
-            <td style="padding:8px 10px;font-size:12px;color:{style['text']};border-bottom:1px solid #EEE;
-                       font-weight:600;text-align:center;">
-                {style['label']}
+            <td style="padding:7px 6px;font-size:12px;border-bottom:1px solid #EEE;
+                       text-align:center;vertical-align:top;">
+                {_budget_cell(budget_yesterday)}
             </td>
-            <td style="padding:8px 10px;font-size:12px;color:#333;border-bottom:1px solid #EEE;">
-                {store.get('yesterday_vs_goal', '')}
+            <td style="padding:7px 6px;font-size:12px;border-bottom:1px solid #EEE;
+                       text-align:center;vertical-align:top;">
+                {_budget_cell(budget_mtd)}
             </td>
-            <td style="padding:8px 10px;font-size:12px;color:#333;border-bottom:1px solid #EEE;">
-                {store.get('mtd_trend', '')}
+            <td style="padding:7px 6px;font-size:12px;border-bottom:1px solid #EEE;
+                       text-align:center;vertical-align:top;">
+                {dpsf_html}
             </td>
-            <td style="padding:8px 10px;font-size:12px;color:#666;border-bottom:1px solid #EEE;">
-                {store.get('primary_concern', '')}
+            <td style="padding:7px 6px;font-size:12px;border-bottom:1px solid #EEE;
+                       text-align:center;vertical-align:top;">
+                {dv_html}
+            </td>
+            <td style="padding:7px 6px;font-size:12px;border-bottom:1px solid #EEE;
+                       text-align:center;vertical-align:top;">
+                {ecom_html}
             </td>
         </tr>
         """
@@ -291,16 +360,23 @@ def _build_store_health_table(stores: list[dict]) -> str:
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
            style="border:1px solid #E0E0E0;border-radius:6px;border-collapse:separate;overflow:hidden;">
         <tr style="background-color:#1565C0;">
-            <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
-                       text-transform:uppercase;letter-spacing:0.5px;">Store</th>
-            <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:center;font-weight:600;
-                       text-transform:uppercase;letter-spacing:0.5px;">Status</th>
-            <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
-                       text-transform:uppercase;letter-spacing:0.5px;">Yesterday</th>
-            <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
-                       text-transform:uppercase;letter-spacing:0.5px;">MTD Trend</th>
-            <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
-                       text-transform:uppercase;letter-spacing:0.5px;">Primary Concern</th>
+            <th style="padding:8px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
+                       text-transform:uppercase;letter-spacing:0.3px;min-width:100px;">Store</th>
+            <th style="padding:8px 6px;font-size:11px;color:#FFF;text-align:center;font-weight:600;
+                       text-transform:uppercase;letter-spacing:0.3px;">Budget<br>
+                <span style="font-size:9px;font-weight:400;opacity:0.8;">Yesterday</span></th>
+            <th style="padding:8px 6px;font-size:11px;color:#FFF;text-align:center;font-weight:600;
+                       text-transform:uppercase;letter-spacing:0.3px;">Budget<br>
+                <span style="font-size:9px;font-weight:400;opacity:0.8;">MTD</span></th>
+            <th style="padding:8px 6px;font-size:11px;color:#FFF;text-align:center;font-weight:600;
+                       text-transform:uppercase;letter-spacing:0.3px;">DPSF<br>
+                <span style="font-size:9px;font-weight:400;opacity:0.8;">MTD vs Goal</span></th>
+            <th style="padding:8px 6px;font-size:11px;color:#FFF;text-align:center;font-weight:600;
+                       text-transform:uppercase;letter-spacing:0.3px;">Donor Val<br>
+                <span style="font-size:9px;font-weight:400;opacity:0.8;">MTD (≥$43)</span></th>
+            <th style="padding:8px 6px;font-size:11px;color:#FFF;text-align:center;font-weight:600;
+                       text-transform:uppercase;letter-spacing:0.3px;">eCom %<br>
+                <span style="font-size:9px;font-weight:400;opacity:0.8;">MTD (≥10%)</span></th>
         </tr>
         {rows}
     </table>
