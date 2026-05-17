@@ -34,6 +34,7 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
     company_metrics_html = _build_company_metrics(summary.get("key_metrics_company_wide", []))
     bright_spots_html = _build_list_section(summary.get("bright_spots", []))
     watch_list_html = _build_watch_list(summary.get("watch_list", []))
+    rolling_7day_html = _build_rolling_7day_insights(summary.get("rolling_7day_insights", []))
 
     # Full report button
     report_button = ""
@@ -142,6 +143,9 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
             {store_health_html}
         </td>
     </tr>
+
+    <!-- Rolling 7-Day Trend Insights -->
+    {rolling_7day_html}
 
     <!-- Watch List -->
     {watch_list_html}
@@ -473,6 +477,92 @@ def _build_watch_list(items: list[dict]) -> str:
                 👁️ Watch List — Monitor Next 48-72 Hours
             </h2>
             {rows}
+        </td>
+    </tr>
+    """
+
+
+DIRECTION_STYLES = {
+    "improving": {"icon": "📈", "color": "#2E7D32", "label": "Improving"},
+    "stable": {"icon": "➡️", "color": "#1565C0", "label": "Stable"},
+    "declining": {"icon": "📉", "color": "#C62828", "label": "Declining"},
+}
+
+
+def _build_rolling_7day_insights(insights: list[dict]) -> str:
+    """Build the rolling 7-day trend insights section."""
+    if not insights:
+        return ""
+
+    rows = ""
+    for i, insight in enumerate(insights):
+        direction = insight.get("direction", "stable")
+        style = DIRECTION_STYLES.get(direction, DIRECTION_STYLES["stable"])
+        bg = "#FFFFFF" if i % 2 == 0 else "#FAFAFA"
+
+        store = insight.get("store", "")
+        metric = insight.get("metric", "")
+        rolling_avg = insight.get("rolling_avg", "—")
+        vs_goal = insight.get("vs_goal", "")
+        interpretation = insight.get("interpretation", "")
+
+        direction_badge = (
+            f'<span style="display:inline-block;padding:2px 8px;border-radius:10px;'
+            f'font-size:10px;font-weight:600;color:{style["color"]};'
+            f'background-color:{style["color"]}15;">{style["icon"]} {style["label"]}</span>'
+        )
+
+        rows += f"""
+        <tr style="background-color:{bg};">
+            <td style="padding:8px 10px;font-size:12px;color:#333;border-bottom:1px solid #EEE;
+                       vertical-align:top;">
+                <strong>{store}</strong>
+            </td>
+            <td style="padding:8px 8px;font-size:12px;color:#333;border-bottom:1px solid #EEE;
+                       text-align:center;vertical-align:top;">
+                {metric}
+            </td>
+            <td style="padding:8px 8px;font-size:12px;color:#333;border-bottom:1px solid #EEE;
+                       text-align:center;vertical-align:top;font-weight:600;">
+                {rolling_avg}
+                {"<br><span style='font-size:10px;color:#999;font-weight:400;'>" + vs_goal + "</span>" if vs_goal else ""}
+            </td>
+            <td style="padding:8px 8px;font-size:12px;border-bottom:1px solid #EEE;
+                       text-align:center;vertical-align:top;">
+                {direction_badge}
+            </td>
+            <td style="padding:8px 10px;font-size:11px;color:#555;border-bottom:1px solid #EEE;
+                       vertical-align:top;line-height:1.4;">
+                {interpretation}
+            </td>
+        </tr>
+        """
+
+    return f"""
+    <tr>
+        <td style="padding:0 24px 20px 24px;">
+            <h2 style="margin:0 0 4px 0;font-size:16px;color:#1565C0;font-weight:600;">
+                📉 Rolling 7-Day Trend Insights
+            </h2>
+            <p style="margin:0 0 12px 0;font-size:11px;color:#999;">
+                Smoothed 7-day averages to separate real trends from daily noise
+            </p>
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+                   style="border:1px solid #E0E0E0;border-radius:6px;border-collapse:separate;overflow:hidden;">
+                <tr style="background-color:#1565C0;">
+                    <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
+                               text-transform:uppercase;letter-spacing:0.3px;">Store</th>
+                    <th style="padding:8px 8px;font-size:11px;color:#FFF;text-align:center;font-weight:600;
+                               text-transform:uppercase;letter-spacing:0.3px;">Metric</th>
+                    <th style="padding:8px 8px;font-size:11px;color:#FFF;text-align:center;font-weight:600;
+                               text-transform:uppercase;letter-spacing:0.3px;">7-Day Avg</th>
+                    <th style="padding:8px 8px;font-size:11px;color:#FFF;text-align:center;font-weight:600;
+                               text-transform:uppercase;letter-spacing:0.3px;">Trend</th>
+                    <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
+                               text-transform:uppercase;letter-spacing:0.3px;">Insight</th>
+                </tr>
+                {rows}
+            </table>
         </td>
     </tr>
     """
