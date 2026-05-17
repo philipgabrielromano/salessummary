@@ -61,10 +61,14 @@ Columns in order:
 - Budget Var: Actual vs Budget variance (negative = below budget)
 - Budget %: Budget variance as percentage
 
-TABLE TYPE 2 — Outlet/Specialty Stores (NO donor columns):
+TABLE TYPE 2 — Outlet/Specialty Stores (IGNORE THESE ENTIRELY):
 These stores (Outlet Canton, Outlet Cleveland, Tanglewood, Washington Square, Westlake)
-do NOT have Donor Value, Donors per Square, DPSF Goal, or DPSF Variance columns.
-Evaluate them on sales, budget %, and eCommerce only.
+are a DIFFERENT business model. DO NOT include them in any analysis, any metric evaluation,
+store_health_summary, critical_alerts, rolling_7day_insights, watch_list, or bright_spots.
+Completely skip them as if they don't exist in the data.
+
+Also IGNORE the "Total" / subtotal rows at the bottom of each table. 
+Only evaluate INDIVIDUAL regular stores from the top table.
 
 ⚠️  CRITICAL WARNINGS:
 - "Average Ticket" is NOT "Donor Value". They are DIFFERENT columns. Do NOT confuse them.
@@ -200,9 +204,12 @@ REMINDER — COLUMN IDENTIFICATION:
 - "Donors per Square" column = Actual DPSF. Compare to "DPSF Goal" column.
 - "DPSF Variance" column = Actual DPSF - Goal. Negative means below goal.
 - "eCom %" column (MTD section) = eCommerce percentage. GOAL: ≥ 10%.
-- Outlet stores (Outlet Canton, Outlet Cleveland, Tanglewood, Washington Square, Westlake) 
-  do NOT have donor/DPSF columns — evaluate on sales and budget only.
-- Skip stores with NaN/blank data (Mentor, Lee Harvard) — they are inactive.
+
+⚠️ STORES TO COMPLETELY IGNORE (do not include in ANY output):
+- Outlet Canton, Outlet Cleveland, Tanglewood, Washington Square, Westlake (different business model)
+- "Total" or subtotal rows (these are aggregate rows, not individual stores)
+- Stores with NaN/blank data (Mentor, Lee Harvard) — they are inactive.
+Only analyze the regular retail stores from the TOP table.
 
 ⚠️ LANGUAGE RULES — READ CAREFULLY:
 - Low DPSF = STAFFING / PRODUCTIVITY problem. Not a donor outreach issue.
@@ -290,11 +297,11 @@ RULES:
 - Use the rolling 7-day average to validate whether issues are one-off anomalies or confirmed trends.
 - Be specific with numbers. Always state the actual value AND the goal/target.
 - Limit critical_alerts to stores needing IMMEDIATE action (max 5).
-- Include ALL active stores in store_health_summary (skip inactive/NaN stores).
+- Include ALL active REGULAR stores in store_health_summary (skip outlets, specialty stores, inactive/NaN stores, and total rows).
 - For store_health_summary: use the MTD "Donors per Square" as dpsf_actual, and "DPSF Goal" as dpsf_goal.
   Set dpsf_ok=true only if actual >= goal. Set dv_ok=true only if Donor Value >= $43. Set ecom_ok=true only if eCom% >= 10.
   For budget fields, include the % sign (e.g., "+4.2%" or "-15.9%").
-- For outlet stores that lack DPSF/donor columns, use "—" for dpsf_actual, dpsf_goal, donor_value_mtd and set their _ok fields to true.
+- Do NOT include outlet/specialty stores (Outlet Canton, Outlet Cleveland, Tanglewood, Washington Square, Westlake) or Total rows in ANY output section.
 - For DPSF in critical_alerts, always show: actual "Donors per Square" vs "DPSF Goal" (e.g., "3.79 vs 5.05 goal").
 - Include 3-7 entries in rolling_7day_insights, focusing on stores where the 7-day trend tells a meaningful story 
   (either confirming a problem, revealing an early warning, or showing recovery).
