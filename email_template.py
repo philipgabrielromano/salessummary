@@ -137,8 +137,14 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
             <h2 style="margin:0 0 4px 0;font-size:16px;color:#1565C0;font-weight:600;">
                 🏪 Store Health Overview
             </h2>
-            <p style="margin:0 0 12px 0;font-size:11px;color:#999;">
+            <p style="margin:0 0 8px 0;font-size:11px;color:#999;">
                 Sorted by status (critical first). Flags: ⬇ below goal &nbsp; ✓ at/above goal
+            </p>
+            <p style="margin:0 0 12px 0;font-size:11px;color:#666;">
+                <span style="color:#C62828;">🔴 Critical</span> &nbsp;&nbsp;
+                <span style="color:#F57F17;">🟡 Declining</span> &nbsp;&nbsp;
+                <span style="color:#1565C0;">🔵 Maintaining</span> &nbsp;&nbsp;
+                <span style="color:#2E7D32;">🟢 Thriving</span>
             </p>
             {store_health_html}
         </td>
@@ -190,55 +196,63 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
 
 
 def _build_critical_alerts(alerts: list[dict]) -> str:
-    """Build the critical alerts section — only shown if there are alerts."""
+    """Build the critical alerts section as a clean table."""
     if not alerts:
         return ""
 
     rows = ""
-    for alert in alerts:
+    for i, alert in enumerate(alerts):
         severity = alert.get("severity", "warning")
         if severity == "critical":
             icon = "🚨"
-            border_color = "#C62828"
-            bg_color = "#FFEBEE"
+            name_color = "#C62828"
         else:
             icon = "⚠️"
-            border_color = "#F57F17"
-            bg_color = "#FFF8E1"
+            name_color = "#F57F17"
+
+        bg = "#FFFFFF" if i % 2 == 0 else "#FAFAFA"
 
         rows += f"""
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
-               style="background-color:{bg_color};border-radius:6px;border-left:4px solid {border_color};
-                      margin-bottom:10px;">
-            <tr>
-                <td style="padding:12px 16px;">
-                    <strong style="font-size:14px;color:{border_color};">
-                        {icon} {alert.get('store', 'Unknown Store')}
-                    </strong>
-                    <p style="margin:6px 0 4px 0;font-size:13px;color:#333;line-height:1.5;">
-                        {alert.get('issue', '')}
-                    </p>
-                    <p style="margin:0 0 4px 0;font-size:12px;color:#666;font-family:monospace;">
-                        {alert.get('metrics', '')}
-                    </p>
-                    <p style="margin:0 0 4px 0;font-size:12px;color:#666;">
-                        <strong>Trend:</strong> {alert.get('trend', '')}
-                    </p>
-                    <p style="margin:0;font-size:12px;color:{border_color};font-weight:600;">
-                        → {alert.get('recommendation', '')}
-                    </p>
-                </td>
-            </tr>
-        </table>
+        <tr style="background-color:{bg};">
+            <td style="padding:8px 10px;font-size:12px;border-bottom:1px solid #EEE;
+                       vertical-align:top;white-space:nowrap;">
+                <strong style="color:{name_color};">{icon} {alert.get('store', '')}</strong>
+            </td>
+            <td style="padding:8px 10px;font-size:12px;color:#333;border-bottom:1px solid #EEE;
+                       vertical-align:top;">
+                {alert.get('issue', '')}
+            </td>
+            <td style="padding:8px 10px;font-size:11px;color:#555;border-bottom:1px solid #EEE;
+                       vertical-align:top;font-family:monospace;white-space:nowrap;">
+                {alert.get('metrics', '')}
+            </td>
+            <td style="padding:8px 10px;font-size:12px;color:#666;border-bottom:1px solid #EEE;
+                       vertical-align:top;">
+                {alert.get('trend', '')}
+            </td>
+        </tr>
         """
 
     return f"""
     <tr>
         <td style="padding:0 24px 20px 24px;">
             <h2 style="margin:0 0 12px 0;font-size:16px;color:#C62828;font-weight:600;">
-                🚨 Critical Alerts — Immediate Attention Required
+                🚨 Action Required
             </h2>
-            {rows}
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+                   style="border:1px solid #E0E0E0;border-radius:6px;border-collapse:separate;overflow:hidden;">
+                <tr style="background-color:#C62828;">
+                    <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
+                               text-transform:uppercase;letter-spacing:0.3px;">Store</th>
+                    <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
+                               text-transform:uppercase;letter-spacing:0.3px;">Issue</th>
+                    <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
+                               text-transform:uppercase;letter-spacing:0.3px;">Metrics</th>
+                    <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
+                               text-transform:uppercase;letter-spacing:0.3px;">Trend</th>
+                </tr>
+                {rows}
+            </table>
         </td>
     </tr>
     """
