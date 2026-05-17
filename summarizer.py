@@ -76,8 +76,11 @@ Evaluate them on sales, budget %, and eCommerce only.
 - Some numbers have OCR artifacts (periods instead of commas, etc.) — interpret contextually.
 
 ═══════════════════════════════════════════════════════════════
-BUSINESS CONTEXT
+BUSINESS CONTEXT — THIS IS A THRIFT STORE OPERATION
 ═══════════════════════════════════════════════════════════════
+
+This is a THRIFT STORE retail operation. Community members donate goods at the store's 
+donation door. Store team members receive, sort, price, and place items on the sales floor.
 
 - This organization uses DONOR-BASED BUDGETING. Donors are the lifeblood of revenue.
 - ★ DPSF (Donors Per Square Foot) is the #1 leading indicator of store health. 
@@ -85,24 +88,57 @@ BUSINESS CONTEXT
   If DPSF is below goal, the store CANNOT make budget — it doesn't have enough product 
   flowing through the building.
 
-  ⚠️ CRITICAL INTERPRETATION: Low DPSF is an OPERATIONAL/STAFFING/EFFICIENCY issue, 
-  NOT a donor outreach or community engagement problem. When DPSF is below goal, it means:
-    • The store may be understaffed on the donation dock (not enough team members to process donors)
-    • Operational workflows may be creating bottlenecks that slow donor processing
-    • Store productivity and efficiency are not where they need to be
-    • The store is not maximizing its capacity to convert available donations into processed inventory
+  ⚠️ CRITICAL INTERPRETATION OF LOW DPSF:
+  Low DPSF is a STORE PRODUCTIVITY / STAFFING / EFFICIENCY problem.
+  It is NOT a donor outreach, community engagement, or "donor volume" problem.
   
-  DO NOT frame low DPSF as "need more community outreach" or "need to attract more donors."
-  Instead, frame it as "need to improve store operations, staffing levels, or processing efficiency."
+  When DPSF is below goal, it signals a store operations problem that needs investigation:
+    • The store may not be running at the productivity level it needs to
+    • Possible causes include scheduling, staffing, training, or workflow issues
+    • The donation door may not have adequate coverage during peak hours
+    • Sorting, pricing, and floor replenishment may be falling behind
+  The AI should FLAG the DPSF gap but NOT assume a specific root cause.
   
-  High DPSF = operations are running smoothly, donations are being processed efficiently, 
-  staff levels are adequate to handle donor volume.
+  ⚠️ BANNED LANGUAGE — NEVER USE THESE PHRASES:
+    ✗ "donor outreach"
+    ✗ "community outreach" 
+    ✗ "attract more donors"
+    ✗ "donor recruitment"
+    ✗ "donor intake"
+    ✗ "donor volume" (as if it's an external supply problem)
+    ✗ "not enough product flow" (too vague)
+    ✗ "can't monetize donors"
+    ✗ "address donor volume"
+    ✗ "understaffed" (don't assume the root cause)
+  
+  ✓ CORRECT FRAMING FOR LOW DPSF — USE THESE INSTEAD:
+    ✓ "Store productivity below target"
+    ✓ "DPSF below goal — operations need review"
+    ✓ "Not processing at required capacity"
+    ✓ "Operational efficiency gap"
+    ✓ "DPSF [actual] vs [goal] — needs attention"
+  Do NOT diagnose the specific cause (don't say "understaffed" or "scheduling gap").
+  Just flag the gap and let leadership investigate.
+  
+  High DPSF = the store team is efficiently receiving donations, sorting, pricing, 
+  and getting product to the sales floor at the right pace.
 
 - ★ DONOR VALUE goal is $43 company-wide. Use the "Donor Value" column (NOT Average Ticket).
-  Stores below $43 are underperforming on monetization — they're not extracting enough 
-  retail value from each donation they receive.
+  Low Donor Value means the store is not extracting enough retail revenue per donation.
+  This is a PRICING and PRODUCT GRADING issue — the team needs to price better or 
+  identify higher-value items more effectively.
+  
+  ✓ CORRECT FRAMING FOR LOW DONOR VALUE:
+    ✓ "Review pricing and product grading"
+    ✓ "Team underpricing goods — training needed"
+    ✓ "Not capturing full value from donations — check pricing discipline"
+    ✓ "Audit pricing practices"
+  
+  ✗ WRONG: "can't monetize donors" / "donor monetization issue"
+
 - ★ eCOMMERCE % goal is 10%. Use the "eCom %" column from the MTD section.
-  Stores below 10% are leaving money on the table.
+  Stores below 10% are leaving money on the table — the eCommerce pull list 
+  may not be getting worked effectively.
 - Compare yesterday's numbers to MTD to spot trends. A bad day + bad MTD = pattern.
   A bad day + good MTD = probably just a bad day.
 - Compare MTD to Last Month to see if performance is improving or deteriorating.
@@ -139,7 +175,7 @@ ANALYSIS FRAMEWORK
 
 2. Compound problems are the priority: A store with low DPSF AND low donor value AND 
    low eCommerce is in serious trouble across multiple dimensions. Low DPSF specifically 
-   points to OPERATIONAL issues (staffing, efficiency, processing capacity).
+   points to STAFFING and PRODUCTIVITY issues. Low Donor Value points to PRICING issues.
 
 3. Prioritize by IMPACT: A large store underperforming has more budget impact than 
    a small store underperforming. Use the Budget column to gauge store size.
@@ -168,11 +204,12 @@ REMINDER — COLUMN IDENTIFICATION:
   do NOT have donor/DPSF columns — evaluate on sales and budget only.
 - Skip stores with NaN/blank data (Mentor, Lee Harvard) — they are inactive.
 
-REMINDER — DPSF INTERPRETATION:
-- Low DPSF = OPERATIONAL problem (staffing, efficiency, processing bottlenecks). 
-  Do NOT describe it as a donor outreach or community engagement issue.
-- Recommendations for low DPSF should focus on: staffing adjustments, operational efficiency 
-  improvements, dock workflow optimization, processing capacity, or productivity coaching.
+⚠️ LANGUAGE RULES — READ CAREFULLY:
+- Low DPSF = STAFFING / PRODUCTIVITY problem. Not a donor outreach issue.
+- Low Donor Value = PRICING / PRODUCT GRADING problem. Not a "monetizing donors" issue.
+- NEVER say: "donor outreach", "community outreach", "attract donors", "donor intake", 
+  "donor volume", "monetize donors", "not enough product flow", "address donor volume",
+  or "understaffed."
 
 REMINDER — ROLLING 7-DAY AVERAGE USAGE:
 - Use the "Rolling 7-Day Average" section to validate trends and distinguish anomalies from patterns.
@@ -184,15 +221,14 @@ Respond in the following JSON format (and ONLY valid JSON, no markdown):
 {{
     "overall_status": "green" | "yellow" | "red",
     "overall_status_reason": "One sentence on overall organization health with key numbers",
-    "executive_summary": "2-3 sentences: How did we do yesterday vs budget? How are we trending MTD vs budget? What's the biggest concern? Reference rolling 7-day trends where relevant.",
+    "executive_summary": "2-3 sentences: How did we do yesterday vs budget? How are we trending MTD? What's the biggest concern? Reference rolling 7-day trends where relevant.",
     "critical_alerts": [
         {{
             "store": "Store Name",
             "severity": "critical" | "warning",
-            "issue": "Clear description of the compound problem. For DPSF issues, frame as operational/staffing/efficiency problems.",
-            "metrics": "DPSF: [Donors per Square] vs [DPSF Goal] goal | Donor Value: $[Donor Value column] vs $43 goal | eCom: [eCom %]% vs 10% goal",
-            "trend": "Compare MTD to Last Month AND note what the rolling 7-day average shows — improving or deteriorating?",
-            "recommendation": "Specific action to take. For low DPSF: focus on staffing, operational efficiency, dock workflow, processing capacity. NOT community outreach."
+            "issue": "≤10 words. (e.g., 'DPSF + DV both below goal — productivity gap')",
+            "metrics": "DPSF: 3.79 vs 5.05 | DV: $34 vs $43 | eCom: 8% vs 10%",
+            "trend": "≤8 words. (e.g., '7-day confirms decline' or 'Worsening from last month')"
         }}
     ],
     "store_health_summary": [
@@ -208,7 +244,7 @@ Respond in the following JSON format (and ONLY valid JSON, no markdown):
             "dv_ok": true if Donor Value MTD >= 43 else false,
             "ecom_pct": "10%",
             "ecom_ok": true if eCom % >= 10 else false,
-            "primary_concern": "Main issue or empty string if performing well. For DPSF issues, cite operational/staffing/efficiency concerns."
+            "primary_concern": "Short phrase. For DPSF: flag the gap (e.g., 'DPSF below goal — needs review'). For DV: pricing issue. Or empty string."
         }}
     ],
     "key_metrics_company_wide": [
@@ -224,30 +260,31 @@ Respond in the following JSON format (and ONLY valid JSON, no markdown):
     "rolling_7day_insights": [
         {{
             "store": "Store Name",
-            "metric": "Which metric this insight is about (e.g., DPSF, Donor Value, Budget %)",
-            "rolling_avg": "The 7-day rolling average value for this metric",
-            "vs_goal": "How the rolling average compares to the goal (e.g., '4.13 vs 5.05 goal')",
+            "metric": "DPSF | Donor Value | Budget %",
+            "rolling_avg": "The 7-day rolling average value",
+            "vs_goal": "4.13 vs 5.05 goal",
             "direction": "improving" | "stable" | "declining",
-            "interpretation": "What this means operationally — is the store recovering, stagnating, or deteriorating? Distinguish from single-day noise."
+            "interpretation": "1 sentence. What this means for this store right now."
         }}
     ],
     "bright_spots": [
-        "Store/win that should be recognized or replicated — mention if rolling 7-day confirms sustained strong performance"
+        "Store/win that should be recognized — mention if 7-day confirms sustained performance"
     ],
     "watch_list": [
         {{
             "store": "Store Name",
-            "reason": "Why this store needs monitoring in the next 48-72 hours. Reference 7-day rolling trend if relevant.",
+            "reason": "Why this store needs monitoring. Reference 7-day trend if relevant.",
             "trigger": "What would escalate this to critical"
         }}
     ]
 }}
 
 RULES:
+- critical_alerts MUST be terse. "issue" ≤10 words. "trend" ≤8 words. No filler. These are dashboard alerts, not paragraphs.
+- NEVER use banned language (see list above). Low DPSF = operational issue needing review. Low DV = pricing/grading issue. Do NOT diagnose specific root causes for DPSF — just flag the gap.
 - Use the CORRECT columns: "Donor Value" for donor value, "Donors per Square" for actual DPSF, "DPSF Goal" for target.
 - NEVER report "Average Ticket" as "Donor Value" — these are completely different metrics.
 - ALWAYS call out stores where Donor Value < $43, eCom % < 10%, or DPSF Variance is negative.
-- For low DPSF, ALWAYS frame the issue as operational/staffing/efficiency — NEVER as donor outreach or community engagement.
 - Prioritize compound problems (multiple KPIs failing) over single-metric misses.
 - Compare yesterday to MTD AND to last month AND to rolling 7-day averages to identify TRENDS.
 - Use the rolling 7-day average to validate whether issues are one-off anomalies or confirmed trends.
