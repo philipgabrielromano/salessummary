@@ -29,12 +29,10 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
     overall_style = STATUS_COLORS.get(overall, STATUS_COLORS["yellow"])
 
     # Build all sections
-    critical_alerts_html = _build_critical_alerts(summary.get("critical_alerts", []))
     store_health_html = _build_store_health_table(summary.get("store_health_summary", []))
     company_metrics_html = _build_company_metrics(summary.get("key_metrics_company_wide", []))
     bright_spots_html = _build_list_section(summary.get("bright_spots", []))
     watch_list_html = _build_watch_list(summary.get("watch_list", []))
-    rolling_7day_html = _build_rolling_7day_insights(summary.get("rolling_7day_insights", []))
 
     # Full report button
     report_button = ""
@@ -118,12 +116,6 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
         </td>
     </tr>
 
-    <!-- Critical Alerts -->
-    {critical_alerts_html}
-
-    <!-- Rolling 7-Day Trend Insights -->
-    {rolling_7day_html}
-
     <!-- Company-Wide Metrics -->
     <tr>
         <td style="padding:0 24px 20px 24px;">
@@ -143,11 +135,17 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
             <p style="margin:0 0 8px 0;font-size:11px;color:#999;">
                 Sorted by status (critical first). Flags: ⬇ below goal &nbsp; ✓ at/above goal
             </p>
-            <p style="margin:0 0 12px 0;font-size:11px;color:#666;">
+            <p style="margin:0 0 6px 0;font-size:11px;color:#666;">
                 <span style="color:#C62828;">🔴 Critical</span> &nbsp;&nbsp;
                 <span style="color:#F57F17;">🟡 Declining</span> &nbsp;&nbsp;
                 <span style="color:#1565C0;">🔵 Maintaining</span> &nbsp;&nbsp;
                 <span style="color:#2E7D32;">🟢 Thriving</span>
+            </p>
+            <p style="margin:0 0 12px 0;font-size:11px;color:#666;">
+                Trend (7-day vs MTD): &nbsp;
+                <span style="color:#2E7D32;font-weight:700;">↑</span> Improving &nbsp;&nbsp;
+                <span style="color:#1565C0;font-weight:700;">→</span> Stable &nbsp;&nbsp;
+                <span style="color:#C62828;font-weight:700;">↓</span> Declining
             </p>
             {store_health_html}
         </td>
@@ -195,95 +193,6 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
     return html
 
 
-def _build_critical_alerts(alerts: list[dict]) -> str:
-    """Build the critical alerts section with visual KPI chips per store."""
-    if not alerts:
-        return ""
-
-    def _kpi_chip(label, value, timeframe, is_ok):
-        """Render a single KPI as a color-coded chip."""
-        if not value or value == "—":
-            return ""
-        if is_ok:
-            bg = "#E8F5E9"
-            color = "#2E7D32"
-            icon = "✓"
-        else:
-            bg = "#FFEBEE"
-            color = "#C62828"
-            icon = "✗"
-        return (
-            f'<span style="display:inline-block;padding:3px 8px;margin:2px 4px 2px 0;'
-            f'border-radius:4px;background-color:{bg};font-size:11px;'
-            f'color:{color};font-weight:600;white-space:nowrap;">'
-            f'{icon} {label}: {value}'
-            f'<span style="font-weight:400;color:#888;font-size:9px;"> ({timeframe})</span>'
-            f'</span>'
-        )
-
-    cards = ""
-    for alert in alerts:
-        severity = alert.get("severity", "warning")
-        if severity == "critical":
-            icon = "🚨"
-            border_color = "#C62828"
-            bg_color = "#FFF5F5"
-        else:
-            icon = "⚠️"
-            border_color = "#F57F17"
-            bg_color = "#FFFDF5"
-
-        store = alert.get("store", "")
-        issue = alert.get("issue", "")
-        trend = alert.get("trend", "")
-
-        # Build KPI chips
-        chips = ""
-        chips += _kpi_chip("DPSF", alert.get("dpsf", ""), alert.get("dpsf_timeframe", ""), alert.get("dpsf_ok", True))
-        chips += _kpi_chip("DV", alert.get("donor_value", ""), alert.get("dv_timeframe", ""), alert.get("dv_ok", True))
-        chips += _kpi_chip("Budget", alert.get("budget_pct", ""), alert.get("budget_timeframe", ""), alert.get("budget_ok", True))
-
-        cards += f"""
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
-               style="margin-bottom:8px;border-radius:6px;border-left:5px solid {border_color};
-                      background-color:{bg_color};">
-            <tr>
-                <td style="padding:12px 14px;">
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                        <tr>
-                            <td style="vertical-align:top;">
-                                <strong style="font-size:14px;color:{border_color};">
-                                    {icon} {store}
-                                </strong>
-                                <span style="font-size:12px;color:#555;margin-left:8px;">{issue}</span>
-                            </td>
-                            <td style="vertical-align:top;text-align:right;white-space:nowrap;">
-                                <span style="font-size:11px;color:#888;font-style:italic;">{trend}</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="2" style="padding-top:6px;">
-                                {chips}
-                            </td>
-                        </tr>
-                    </table>
-                </td>
-            </tr>
-        </table>
-        """
-
-    return f"""
-    <tr>
-        <td style="padding:0 24px 20px 24px;">
-            <h2 style="margin:0 0 12px 0;font-size:16px;color:#C62828;font-weight:600;">
-                🚨 Action Required
-            </h2>
-            {cards}
-        </td>
-    </tr>
-    """
-
-
 def _format_kpi_cell(value: str, is_good: bool) -> str:
     """Format a KPI cell with color and arrow indicator."""
     if is_good:
@@ -313,11 +222,22 @@ def _build_store_health_table(stores: list[dict]) -> str:
         dpsf_actual = store.get("dpsf_actual", "—")
         dpsf_goal = store.get("dpsf_goal", "—")
         dpsf_ok = store.get("dpsf_ok", True)
+        dpsf_7day = store.get("dpsf_7day", "")
         donor_value = store.get("donor_value_mtd", "—")
         dv_ok = store.get("dv_ok", True)
+        dv_7day = store.get("dv_7day", "")
         ecom = store.get("ecom_pct", "—")
         ecom_ok = store.get("ecom_ok", True)
         concern = store.get("primary_concern", "")
+        trend_direction = store.get("trend_direction", "stable")
+
+        # Trend arrow
+        trend_arrows = {
+            "improving": {"arrow": "↑", "color": "#2E7D32"},
+            "stable": {"arrow": "→", "color": "#1565C0"},
+            "declining": {"arrow": "↓", "color": "#C62828"},
+        }
+        trend_style = trend_arrows.get(trend_direction, trend_arrows["stable"])
 
         # Color the budget cells
         def _budget_cell(val):
@@ -334,7 +254,7 @@ def _build_store_health_table(stores: list[dict]) -> str:
             except ValueError:
                 return val
 
-        # DPSF cell: show actual vs goal with color
+        # DPSF cell: show actual vs goal with color, plus 7-day
         if dpsf_actual != "—" and dpsf_goal != "—":
             dpsf_display = f"{dpsf_actual}"
             if dpsf_ok:
@@ -342,6 +262,8 @@ def _build_store_health_table(stores: list[dict]) -> str:
             else:
                 dpsf_html = f'<span style="color:#C62828;font-weight:600;">⬇ {dpsf_display}</span>'
             dpsf_html += f'<br><span style="font-size:10px;color:#999;">goal: {dpsf_goal}</span>'
+            if dpsf_7day:
+                dpsf_html += f'<br><span style="font-size:10px;color:#888;">7d: {dpsf_7day}</span>'
         else:
             dpsf_html = '<span style="color:#999;">—</span>'
 
@@ -351,6 +273,8 @@ def _build_store_health_table(stores: list[dict]) -> str:
                 dv_html = f'<span style="color:#2E7D32;font-weight:600;">✓ {donor_value}</span>'
             else:
                 dv_html = f'<span style="color:#C62828;font-weight:600;">⬇ {donor_value}</span>'
+            if dv_7day:
+                dv_html += f'<br><span style="font-size:10px;color:#888;">7d: {dv_7day}</span>'
         else:
             dv_html = '<span style="color:#999;">—</span>'
 
@@ -363,11 +287,15 @@ def _build_store_health_table(stores: list[dict]) -> str:
         else:
             ecom_html = '<span style="color:#999;">—</span>'
 
-        # Status badge
+        # Status badge + trend arrow
         badge_html = (
             f'<span style="display:inline-block;padding:2px 8px;border-radius:10px;'
             f'font-size:10px;font-weight:600;color:{style["text"]};'
             f'background-color:{style["bg"]};">{style["dot"]}</span>'
+        )
+        trend_html = (
+            f'<span style="font-size:14px;font-weight:700;color:{trend_style["color"]};'
+            f'margin-left:4px;vertical-align:middle;">{trend_style["arrow"]}</span>'
         )
 
         rows += f"""
@@ -375,7 +303,7 @@ def _build_store_health_table(stores: list[dict]) -> str:
             <td style="padding:7px 8px;font-size:12px;color:#333;border-bottom:1px solid #EEE;
                        white-space:nowrap;vertical-align:top;">
                 <strong>{store.get('store', '')}</strong><br>
-                {badge_html}
+                {badge_html} {trend_html}
             </td>
             <td style="padding:7px 6px;font-size:12px;border-bottom:1px solid #EEE;
                        text-align:center;vertical-align:top;">
@@ -517,92 +445,6 @@ def _build_watch_list(items: list[dict]) -> str:
                 👁️ Watch List — Monitor Next 48-72 Hours
             </h2>
             {rows}
-        </td>
-    </tr>
-    """
-
-
-DIRECTION_STYLES = {
-    "improving": {"icon": "📈", "color": "#2E7D32", "label": "Improving"},
-    "stable": {"icon": "➡️", "color": "#1565C0", "label": "Stable"},
-    "declining": {"icon": "📉", "color": "#C62828", "label": "Declining"},
-}
-
-
-def _build_rolling_7day_insights(insights: list[dict]) -> str:
-    """Build the rolling 7-day trend insights section."""
-    if not insights:
-        return ""
-
-    rows = ""
-    for i, insight in enumerate(insights):
-        direction = insight.get("direction", "stable")
-        style = DIRECTION_STYLES.get(direction, DIRECTION_STYLES["stable"])
-        bg = "#FFFFFF" if i % 2 == 0 else "#FAFAFA"
-
-        store = insight.get("store", "")
-        metric = insight.get("metric", "")
-        rolling_avg = insight.get("rolling_avg", "—")
-        vs_goal = insight.get("vs_goal", "")
-        interpretation = insight.get("interpretation", "")
-
-        direction_badge = (
-            f'<span style="display:inline-block;padding:2px 8px;border-radius:10px;'
-            f'font-size:10px;font-weight:600;color:{style["color"]};'
-            f'background-color:{style["color"]}15;">{style["icon"]} {style["label"]}</span>'
-        )
-
-        rows += f"""
-        <tr style="background-color:{bg};">
-            <td style="padding:8px 10px;font-size:12px;color:#333;border-bottom:1px solid #EEE;
-                       vertical-align:top;">
-                <strong>{store}</strong>
-            </td>
-            <td style="padding:8px 8px;font-size:12px;color:#333;border-bottom:1px solid #EEE;
-                       text-align:center;vertical-align:top;">
-                {metric}
-            </td>
-            <td style="padding:8px 8px;font-size:12px;color:#333;border-bottom:1px solid #EEE;
-                       text-align:center;vertical-align:top;font-weight:600;">
-                {rolling_avg}
-                {"<br><span style='font-size:10px;color:#999;font-weight:400;'>" + vs_goal + "</span>" if vs_goal else ""}
-            </td>
-            <td style="padding:8px 8px;font-size:12px;border-bottom:1px solid #EEE;
-                       text-align:center;vertical-align:top;">
-                {direction_badge}
-            </td>
-            <td style="padding:8px 10px;font-size:11px;color:#555;border-bottom:1px solid #EEE;
-                       vertical-align:top;line-height:1.4;">
-                {interpretation}
-            </td>
-        </tr>
-        """
-
-    return f"""
-    <tr>
-        <td style="padding:0 24px 20px 24px;">
-            <h2 style="margin:0 0 4px 0;font-size:16px;color:#1565C0;font-weight:600;">
-                📉 Rolling 7-Day Trend Insights
-            </h2>
-            <p style="margin:0 0 12px 0;font-size:11px;color:#999;">
-                Smoothed 7-day averages to separate real trends from daily noise
-            </p>
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
-                   style="border:1px solid #E0E0E0;border-radius:6px;border-collapse:separate;overflow:hidden;">
-                <tr style="background-color:#1565C0;">
-                    <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
-                               text-transform:uppercase;letter-spacing:0.3px;">Store</th>
-                    <th style="padding:8px 8px;font-size:11px;color:#FFF;text-align:center;font-weight:600;
-                               text-transform:uppercase;letter-spacing:0.3px;">Metric</th>
-                    <th style="padding:8px 8px;font-size:11px;color:#FFF;text-align:center;font-weight:600;
-                               text-transform:uppercase;letter-spacing:0.3px;">7-Day Avg</th>
-                    <th style="padding:8px 8px;font-size:11px;color:#FFF;text-align:center;font-weight:600;
-                               text-transform:uppercase;letter-spacing:0.3px;">Trend</th>
-                    <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
-                               text-transform:uppercase;letter-spacing:0.3px;">Insight</th>
-                </tr>
-                {rows}
-            </table>
         </td>
     </tr>
     """
