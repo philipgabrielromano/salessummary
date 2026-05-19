@@ -215,7 +215,8 @@ Only analyze the regular retail stores from the TOP table.
 - Low DPSF = STAFFING / PRODUCTIVITY problem. Not a donor outreach issue.
 - Low Donor Value = PRICING / PRODUCT GRADING problem. Not a "monetizing donors" issue.
 - NEVER say: "donor outreach", "community outreach", "attract donors", "donor intake", 
-  "donor volume", "monetize donors", "not enough product flow", or "address donor volume."
+  "donor volume", "monetize donors", "not enough product flow", "address donor volume",
+  or "understaffed."
 
 REMINDER — ROLLING 7-DAY AVERAGE USAGE:
 - Use the "Rolling 7-Day Average" section to validate trends and distinguish anomalies from patterns.
@@ -228,37 +229,24 @@ Respond in the following JSON format (and ONLY valid JSON, no markdown):
     "overall_status": "green" | "yellow" | "red",
     "overall_status_reason": "One sentence on overall organization health with key numbers",
     "executive_summary": "2-3 sentences: How did we do yesterday vs budget? How are we trending MTD? What's the biggest concern? Reference rolling 7-day trends where relevant.",
-    "critical_alerts": [
-        {{
-            "store": "Store Name",
-            "severity": "critical" | "warning",
-            "issue": "≤10 words. What's wrong.",
-            "dpsf": "3.79 vs 5.05 goal",
-            "dpsf_timeframe": "7-day" | "MTD" | "Yesterday",
-            "dpsf_ok": false,
-            "donor_value": "$34 vs $43 goal",
-            "dv_timeframe": "7-day" | "MTD" | "Yesterday",
-            "dv_ok": false,
-            "budget_pct": "-15.2%",
-            "budget_timeframe": "MTD",
-            "budget_ok": false,
-            "trend": "≤8 words. (e.g., '7-day confirms decline')"
-        }}
-    ],
+
     "store_health_summary": [
         {{
             "store": "Store Name",
             "status": "thriving" | "maintaining" | "declining" | "critical",
+            "trend_direction": "improving" | "stable" | "declining",
             "budget_yesterday": "+5.2%" or "-14.1%",
             "budget_mtd": "+4.2%" or "-15.9%",
             "dpsf_actual": "4.39",
             "dpsf_goal": "5.24",
             "dpsf_ok": true if Donors per Square >= DPSF Goal else false,
+            "dpsf_7day": "4.25",
             "donor_value_mtd": "$45",
             "dv_ok": true if Donor Value MTD >= 43 else false,
+            "dv_7day": "$44",
             "ecom_pct": "10%",
             "ecom_ok": true if eCom % >= 10 else false,
-            "primary_concern": "Short phrase. For DPSF: flag the gap (e.g., 'DPSF below goal — needs review'). For DV: pricing issue. Or empty string."
+            "primary_concern": "Short phrase or empty string."
         }}
     ],
     "key_metrics_company_wide": [
@@ -268,17 +256,7 @@ Respond in the following JSON format (and ONLY valid JSON, no markdown):
             "mtd": "MTD total row value",
             "goal": "Goal/target",
             "status": "green" | "yellow" | "red",
-            "note": "Brief context — reference 7-day trend if helpful"
-        }}
-    ],
-    "rolling_7day_insights": [
-        {{
-            "store": "Store Name",
-            "metric": "DPSF | Donor Value | Budget %",
-            "rolling_avg": "The 7-day rolling average value",
-            "vs_goal": "4.13 vs 5.05 goal",
-            "direction": "improving" | "stable" | "declining",
-            "interpretation": "1 sentence. What this means for this store right now."
+            "note": "Brief context"
         }}
     ],
     "bright_spots": [
@@ -294,7 +272,6 @@ Respond in the following JSON format (and ONLY valid JSON, no markdown):
 }}
 
 RULES:
-- critical_alerts MUST be terse. "issue" ≤10 words. "trend" ≤8 words. No filler. These are dashboard alerts, not paragraphs.
 - NEVER use banned language (see list above). Low DPSF = operational issue needing review. Low DV = pricing/grading issue. Do NOT diagnose specific root causes for DPSF — just flag the gap.
 - Use the CORRECT columns: "Donor Value" for donor value, "Donors per Square" for actual DPSF, "DPSF Goal" for target.
 - NEVER report "Average Ticket" as "Donor Value" — these are completely different metrics.
@@ -303,15 +280,21 @@ RULES:
 - Compare yesterday to MTD AND to last month AND to rolling 7-day averages to identify TRENDS.
 - Use the rolling 7-day average to validate whether issues are one-off anomalies or confirmed trends.
 - Be specific with numbers. Always state the actual value AND the goal/target.
-- Limit critical_alerts to stores needing IMMEDIATE action (max 5).
 - Include ALL active REGULAR stores in store_health_summary (skip outlets, specialty stores, inactive/NaN stores, and total rows).
 - For store_health_summary: use the MTD "Donors per Square" as dpsf_actual, and "DPSF Goal" as dpsf_goal.
   Set dpsf_ok=true only if actual >= goal. Set dv_ok=true only if Donor Value >= $43. Set ecom_ok=true only if eCom% >= 10.
   For budget fields, include the % sign (e.g., "+4.2%" or "-15.9%").
+- dpsf_7day = the store's DPSF from the Rolling 7-Day Average page. dv_7day = the store's Donor Value from the Rolling 7-Day Average page.
+- trend_direction: Compare the 7-day rolling averages to MTD to determine trajectory:
+  "improving" = 7-day is better than MTD (store is getting better recently)
+  "stable" = 7-day is roughly the same as MTD (no change)
+  "declining" = 7-day is worse than MTD (store is getting worse recently)
+- Use trend_direction + current KPI status to determine the "status" classification:
+  CRITICAL = multiple KPIs below goal AND trend_direction is "declining" or "stable" (not recovering)
+  DECLINING = below goal on key metrics AND 7-day confirms downward trend
+  MAINTAINING = mixed signals OR below goal but 7-day shows "improving" (may be recovering)
+  THRIVING = above goals with 7-day confirming "stable" or "improving"
 - Do NOT include outlet/specialty stores (Outlet Canton, Outlet Cleveland, Tanglewood, Washington Square, Westlake) or Total rows in ANY output section.
-- For DPSF in critical_alerts, always show: actual "Donors per Square" vs "DPSF Goal" (e.g., "3.79 vs 5.05 goal").
-- Include 3-7 entries in rolling_7day_insights, focusing on stores where the 7-day trend tells a meaningful story 
-  (either confirming a problem, revealing an early warning, or showing recovery).
 """
 
 
@@ -364,18 +347,16 @@ def generate_summary(report_content: str, config: Config) -> dict:
             "overall_status_reason": "Unable to fully parse report data",
             "executive_summary": raw_response[:500],
             "key_metrics_company_wide": [],
-            "critical_alerts": [],
             "store_health_summary": [],
             "bright_spots": [],
             "watch_list": [],
-            "rolling_7day_insights": [],
         }
 
     # Validate expected keys exist
     expected_keys = [
         "overall_status", "executive_summary", "key_metrics_company_wide",
-        "critical_alerts", "store_health_summary",
-        "bright_spots", "watch_list", "rolling_7day_insights",
+        "store_health_summary",
+        "bright_spots", "watch_list",
     ]
     for key in expected_keys:
         if key not in summary:
@@ -383,8 +364,6 @@ def generate_summary(report_content: str, config: Config) -> dict:
 
     logger.info(
         f"Summary generated: {len(summary.get('store_health_summary', []))} stores, "
-        f"{len(summary.get('critical_alerts', []))} critical alerts, "
-        f"{len(summary.get('rolling_7day_insights', []))} rolling 7-day insights, "
         f"overall status: {summary.get('overall_status', 'unknown')}"
     )
     return summary
