@@ -215,8 +215,7 @@ Only analyze the regular retail stores from the TOP table.
 - Low DPSF = STAFFING / PRODUCTIVITY problem. Not a donor outreach issue.
 - Low Donor Value = PRICING / PRODUCT GRADING problem. Not a "monetizing donors" issue.
 - NEVER say: "donor outreach", "community outreach", "attract donors", "donor intake", 
-  "donor volume", "monetize donors", "not enough product flow", "address donor volume",
-  or "understaffed."
+  "donor volume", "monetize donors", "not enough product flow", or "address donor volume."
 
 REMINDER — ROLLING 7-DAY AVERAGE USAGE:
 - Use the "Rolling 7-Day Average" section to validate trends and distinguish anomalies from patterns.
@@ -233,9 +232,17 @@ Respond in the following JSON format (and ONLY valid JSON, no markdown):
         {{
             "store": "Store Name",
             "severity": "critical" | "warning",
-            "issue": "≤10 words. (e.g., 'DPSF + DV both below goal — productivity gap')",
-            "metrics": "DPSF: 3.79 vs 5.05 | DV: $34 vs $43 | eCom: 8% vs 10%",
-            "trend": "≤8 words. (e.g., '7-day confirms decline' or 'Worsening from last month')"
+            "issue": "≤10 words. What's wrong.",
+            "dpsf": "3.79 vs 5.05 goal",
+            "dpsf_timeframe": "7-day" | "MTD" | "Yesterday",
+            "dpsf_ok": false,
+            "donor_value": "$34 vs $43 goal",
+            "dv_timeframe": "7-day" | "MTD" | "Yesterday",
+            "dv_ok": false,
+            "budget_pct": "-15.2%",
+            "budget_timeframe": "MTD",
+            "budget_ok": false,
+            "trend": "≤8 words. (e.g., '7-day confirms decline')"
         }}
     ],
     "store_health_summary": [
