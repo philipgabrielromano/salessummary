@@ -357,7 +357,7 @@ def generate_summary(report_content: str, config: Config) -> dict:
 
     user_prompt = USER_PROMPT_TEMPLATE.format(
         report_name=config.report_name,
-        report_content=report_content[:50000],  # Cap to avoid token limits
+        report_content=report_content[:500000],  # Cap to avoid token limits
     )
 
     use_responses_api = _is_responses_api_model(config.openai_model)
