@@ -172,7 +172,7 @@ ANALYSIS FRAMEWORK
 ═══════════════════════════════════════════════════════════════
 
 1. Combine yesterday + MTD + last month + rolling 7-day average to classify each store:
-   - THRIVING: Above goals, positive trends, rolling 7-day confirms strong momentum
+   - THRIVING = budget MUST be at or above 0% MTD, AND key KPIs mostly at goal. A store that is below budget MTD CANNOT be "thriving" regardless of trend direction.
    - MAINTAINING: Mixed signals — monitor. Rolling 7-day may show early directional shift
    - DECLINING: Below goal with worsening MTD trend AND rolling 7-day confirms downward trajectory — needs intervention
    - CRITICAL: Significantly below on multiple KPIs with rolling 7-day average confirming sustained underperformance — immediate action required
