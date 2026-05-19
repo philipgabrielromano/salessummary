@@ -121,6 +121,9 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
     <!-- Critical Alerts -->
     {critical_alerts_html}
 
+    <!-- Rolling 7-Day Trend Insights -->
+    {rolling_7day_html}
+
     <!-- Company-Wide Metrics -->
     <tr>
         <td style="padding:0 24px 20px 24px;">
@@ -149,9 +152,6 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
             {store_health_html}
         </td>
     </tr>
-
-    <!-- Rolling 7-Day Trend Insights -->
-    {rolling_7day_html}
 
     <!-- Watch List -->
     {watch_list_html}
@@ -196,41 +196,80 @@ def render_email(summary: dict, report_name: str, company_name: str, full_report
 
 
 def _build_critical_alerts(alerts: list[dict]) -> str:
-    """Build the critical alerts section as a clean table."""
+    """Build the critical alerts section with visual KPI chips per store."""
     if not alerts:
         return ""
 
-    rows = ""
-    for i, alert in enumerate(alerts):
+    def _kpi_chip(label, value, timeframe, is_ok):
+        """Render a single KPI as a color-coded chip."""
+        if not value or value == "—":
+            return ""
+        if is_ok:
+            bg = "#E8F5E9"
+            color = "#2E7D32"
+            icon = "✓"
+        else:
+            bg = "#FFEBEE"
+            color = "#C62828"
+            icon = "✗"
+        return (
+            f'<span style="display:inline-block;padding:3px 8px;margin:2px 4px 2px 0;'
+            f'border-radius:4px;background-color:{bg};font-size:11px;'
+            f'color:{color};font-weight:600;white-space:nowrap;">'
+            f'{icon} {label}: {value}'
+            f'<span style="font-weight:400;color:#888;font-size:9px;"> ({timeframe})</span>'
+            f'</span>'
+        )
+
+    cards = ""
+    for alert in alerts:
         severity = alert.get("severity", "warning")
         if severity == "critical":
             icon = "🚨"
-            name_color = "#C62828"
+            border_color = "#C62828"
+            bg_color = "#FFF5F5"
         else:
             icon = "⚠️"
-            name_color = "#F57F17"
+            border_color = "#F57F17"
+            bg_color = "#FFFDF5"
 
-        bg = "#FFFFFF" if i % 2 == 0 else "#FAFAFA"
+        store = alert.get("store", "")
+        issue = alert.get("issue", "")
+        trend = alert.get("trend", "")
 
-        rows += f"""
-        <tr style="background-color:{bg};">
-            <td style="padding:8px 10px;font-size:12px;border-bottom:1px solid #EEE;
-                       vertical-align:top;white-space:nowrap;">
-                <strong style="color:{name_color};">{icon} {alert.get('store', '')}</strong>
-            </td>
-            <td style="padding:8px 10px;font-size:12px;color:#333;border-bottom:1px solid #EEE;
-                       vertical-align:top;">
-                {alert.get('issue', '')}
-            </td>
-            <td style="padding:8px 10px;font-size:11px;color:#555;border-bottom:1px solid #EEE;
-                       vertical-align:top;font-family:monospace;white-space:nowrap;">
-                {alert.get('metrics', '')}
-            </td>
-            <td style="padding:8px 10px;font-size:12px;color:#666;border-bottom:1px solid #EEE;
-                       vertical-align:top;">
-                {alert.get('trend', '')}
-            </td>
-        </tr>
+        # Build KPI chips
+        chips = ""
+        chips += _kpi_chip("DPSF", alert.get("dpsf", ""), alert.get("dpsf_timeframe", ""), alert.get("dpsf_ok", True))
+        chips += _kpi_chip("DV", alert.get("donor_value", ""), alert.get("dv_timeframe", ""), alert.get("dv_ok", True))
+        chips += _kpi_chip("Budget", alert.get("budget_pct", ""), alert.get("budget_timeframe", ""), alert.get("budget_ok", True))
+
+        cards += f"""
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+               style="margin-bottom:8px;border-radius:6px;border-left:5px solid {border_color};
+                      background-color:{bg_color};">
+            <tr>
+                <td style="padding:12px 14px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                        <tr>
+                            <td style="vertical-align:top;">
+                                <strong style="font-size:14px;color:{border_color};">
+                                    {icon} {store}
+                                </strong>
+                                <span style="font-size:12px;color:#555;margin-left:8px;">{issue}</span>
+                            </td>
+                            <td style="vertical-align:top;text-align:right;white-space:nowrap;">
+                                <span style="font-size:11px;color:#888;font-style:italic;">{trend}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="padding-top:6px;">
+                                {chips}
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
         """
 
     return f"""
@@ -239,20 +278,7 @@ def _build_critical_alerts(alerts: list[dict]) -> str:
             <h2 style="margin:0 0 12px 0;font-size:16px;color:#C62828;font-weight:600;">
                 🚨 Action Required
             </h2>
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
-                   style="border:1px solid #E0E0E0;border-radius:6px;border-collapse:separate;overflow:hidden;">
-                <tr style="background-color:#C62828;">
-                    <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
-                               text-transform:uppercase;letter-spacing:0.3px;">Store</th>
-                    <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
-                               text-transform:uppercase;letter-spacing:0.3px;">Issue</th>
-                    <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
-                               text-transform:uppercase;letter-spacing:0.3px;">Metrics</th>
-                    <th style="padding:8px 10px;font-size:11px;color:#FFF;text-align:left;font-weight:600;
-                               text-transform:uppercase;letter-spacing:0.3px;">Trend</th>
-                </tr>
-                {rows}
-            </table>
+            {cards}
         </td>
     </tr>
     """
