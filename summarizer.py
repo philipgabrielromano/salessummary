@@ -172,7 +172,7 @@ ANALYSIS FRAMEWORK
 ═══════════════════════════════════════════════════════════════
 
 1. Combine yesterday + MTD + last month + rolling 7-day average to classify each store:
-   - THRIVING = budget MUST be at or above 0% MTD, AND key KPIs mostly at goal. A store that is below budget MTD CANNOT be "thriving" regardless of trend direction.
+   - THRIVING: Above goals, positive trends, rolling 7-day confirms strong momentum
    - MAINTAINING: Mixed signals — monitor. Rolling 7-day may show early directional shift
    - DECLINING: Below goal with worsening MTD trend AND rolling 7-day confirms downward trajectory — needs intervention
    - CRITICAL: Significantly below on multiple KPIs with rolling 7-day average confirming sustained underperformance — immediate action required
@@ -292,15 +292,59 @@ RULES:
 - Use trend_direction + current KPI status to determine the "status" classification:
   CRITICAL = multiple KPIs below goal AND trend_direction is "declining" or "stable" (not recovering)
   DECLINING = below goal on key metrics AND 7-day confirms downward trend
-  MAINTAINING = mixed signals OR below goal but 7-day shows "improving" (may be recovering)
-  THRIVING = above goals with 7-day confirming "stable" or "improving"
+  MAINTAINING = mixed signals, OR below goal but 7-day shows "improving" (recovering but not there yet)
+  THRIVING = budget MUST be at or above 0% MTD, AND key KPIs mostly at goal. A store that is below budget MTD CANNOT be "thriving" regardless of trend direction.
 - Do NOT include outlet/specialty stores (Outlet Canton, Outlet Cleveland, Tanglewood, Washington Square, Westlake) or Total rows in ANY output section.
 """
+
+
+def _is_responses_api_model(model: str) -> bool:
+    """Check if the model requires the Responses API (GPT-5.x reasoning models)."""
+    return model.startswith("gpt-5")
+
+
+def _call_responses_api(client: OpenAI, model: str, system_prompt: str, user_prompt: str) -> tuple[str, int]:
+    """Call the Responses API for GPT-5.x reasoning models."""
+    response = client.responses.create(
+        model=model,
+        instructions=system_prompt,
+        input=[
+            {"role": "user", "content": user_prompt},
+        ],
+        reasoning={"effort": "medium"},
+        text={"format": {"type": "json_object"}},
+    )
+
+    raw_response = response.output_text
+    total_tokens = response.usage.total_tokens if response.usage else 0
+    return raw_response, total_tokens
+
+
+def _call_chat_completions_api(client: OpenAI, model: str, system_prompt: str, user_prompt: str) -> tuple[str, int]:
+    """Call the Chat Completions API for legacy models (GPT-4o, GPT-4.x, etc.)."""
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.3,
+        max_tokens=14000,
+        response_format={"type": "json_object"},
+    )
+
+    raw_response = response.choices[0].message.content
+    total_tokens = response.usage.total_tokens if response.usage else 0
+    return raw_response, total_tokens
 
 
 def generate_summary(report_content: str, config: Config) -> dict:
     """
     Send extracted report content to OpenAI and get a structured summary.
+
+    Automatically selects the correct API based on model:
+    - GPT-5.x models → Responses API (reasoning models)
+    - All other models → Chat Completions API
 
     Args:
         report_content: The extracted text/tables from the PDF.
@@ -316,23 +360,22 @@ def generate_summary(report_content: str, config: Config) -> dict:
         report_content=report_content[:50000],  # Cap to avoid token limits
     )
 
-    logger.info(f"Sending {len(report_content):,} chars to OpenAI ({config.openai_model})...")
+    use_responses_api = _is_responses_api_model(config.openai_model)
+    api_type = "Responses API" if use_responses_api else "Chat Completions API"
+    logger.info(f"Sending {len(report_content):,} chars to OpenAI ({config.openai_model}) via {api_type}...")
 
-    response = client.chat.completions.create(
-        model=config.openai_model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.3,  # Low temp for consistent, factual output
-        max_tokens=14000,
-        response_format={"type": "json_object"},
-    )
+    if use_responses_api:
+        raw_response, total_tokens = _call_responses_api(
+            client, config.openai_model, SYSTEM_PROMPT, user_prompt
+        )
+    else:
+        raw_response, total_tokens = _call_chat_completions_api(
+            client, config.openai_model, SYSTEM_PROMPT, user_prompt
+        )
 
-    raw_response = response.choices[0].message.content
     logger.info(
         f"OpenAI response received: {len(raw_response):,} chars, "
-        f"tokens used: {response.usage.total_tokens:,}"
+        f"tokens used: {total_tokens:,}"
     )
 
     # Parse JSON response
