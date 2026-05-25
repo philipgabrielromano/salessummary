@@ -89,14 +89,15 @@ class GraphClient:
 
         messages = response.json().get("value", [])
 
-        # Filter by sender in Python if configured
-        if sender_filter and messages:
-            sender_lower = sender_filter.lower()
+        # Filter by exact subject match in Python (Graph $search does keyword matching,
+        # which can return partial matches like "Retail Weekly Labor" for "Retail Sales Report")
+        if subject_filter and messages:
+            subject_lower = subject_filter.lower()
             messages = [
                 m for m in messages
-                if m.get("from", {}).get("emailAddress", {}).get("address", "").lower() == sender_lower
+                if subject_lower in m.get("subject", "").lower()
             ]
-
+            
         if not messages:
             logger.warning("No Power BI report email found matching the filter.")
             return None
